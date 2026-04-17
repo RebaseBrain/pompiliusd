@@ -1,11 +1,11 @@
-use reqwest::{Client, StatusCode};
-use std::collections::HashMap;
-
 use crate::{
-    entities::{ConfigCreateRequest, RemoteConfig},
-    error::CloudError,
+    entities::{ConfigCreateRequest, ListRemotesResponse},
+    error::CloudeError,
 };
-type Result<T> = std::result::Result<T, CloudError>;
+use reqwest::{Client, StatusCode};
+use serde_json::json;
+use std::collections::HashMap;
+type Result<T> = std::result::Result<T, CloudeError>;
 
 pub trait RcloneApi {
     fn list_profiles(&self) -> impl Future<Output = Result<Vec<(String, String)>>>;
@@ -14,9 +14,13 @@ pub trait RcloneApi {
         profile_name: &str,
         domain: &str,
     ) -> impl Future<Output = Result<String>>;
-
-    fn delete_config(&self, profile_name: &str) -> impl Future<Output = Result<String>>;
-    fn mount(&self, profile_name: &str, domain: &str) -> impl Future<Output = Result<String>>;
+    fn delete_profile(&self, profile_name: &str) -> impl Future<Output = Result<String>>;
+    fn mount(
+        &self,
+        profile_name: &str,
+        domen: &str,
+        file_path: &str,
+    ) -> impl Future<Output = Result<String>>;
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = Result<String>>;
 }
 
@@ -83,11 +87,17 @@ impl RcloneApi for RcClone {
         Ok(format!("Success: Profile {} deleted", profile_name))
     }
 
-    async fn mount(&self, profile_name: &str, _domain: &str) -> Result<String> {
-        let body = HashMap::from([
-            ("fs", profile_name.to_string() + ":"),
-            ("mountPoint", format!("/tmp/{}", profile_name)),
-        ]);
+    async fn mount(&self, profile_name: &str, _domen: &str, file_path: &str) -> Result<String> {
+        let body = json!({
+            "fs": format!("{}:/", profile_name),
+            "mountPoint": format!("{}", file_path),
+            "vfsOpt": {
+                "CacheMode": "full",
+                "CacheMaxAge": "3600s",
+                "CacheMaxSize": "10G",
+                "CachePollInterval": "1m"
+            }
+        });
 
         self.client
             .post(format!("{}mount/mount", self.url))
