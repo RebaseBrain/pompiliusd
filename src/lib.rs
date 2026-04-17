@@ -30,14 +30,14 @@ impl CloudeApi for Cloude {
     }
 
     async fn create_profile(&self, profile_name: &str, domen: &str) -> String {
-        match self.rclone.config_create(profile_name, domen).await {
+        match self.rclone.create_config(profile_name, domen).await {
             Ok(res) => to_ok(StatusCode::OK, res),
             Err(err) => err.to_string(),
         }
     }
 
     async fn delete_profile(&self, profile_name: &str) -> String {
-        match self.rclone.delete_profile(profile_name).await {
+        match self.rclone.delete_config(profile_name).await {
             Ok(res) => to_ok(StatusCode::OK, res),
             Err(err) => err.to_string(),
         }
