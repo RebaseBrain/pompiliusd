@@ -15,7 +15,7 @@ BINARY_PATH="$(pwd)/target/release/pompiliusd"
 RCLONE_BIN="$(which rclone)"
 mkdir -p "$SERVICE_DIR"
 
-cat <<EOF > "$SERVICE_DIR/rclone-rcd.service"
+cat <<EOF > "$SERVICE_DIR/rclone-daemon.service"
 [Unit]
 Description=Rclone Remote Control Daemon
 After=network.target
@@ -45,7 +45,7 @@ WantedBy=default.target
 EOF
 
 systemctl --user daemon-reload
-systemctl --user enable --now rclone-rcd.service
+systemctl --user enable --now rclone-daemon.service
 systemctl --user enable --now pompiliusd.service
 
 sleep 2
