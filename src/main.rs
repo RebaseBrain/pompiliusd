@@ -1,4 +1,4 @@
-use clouds_api::{Cloud, rclone_api::RcClone};
+use pompiliusd::{Cloud, rclone_api::RcClone};
 use reqwest::Client;
 use std::{error::Error, future::pending};
 use zbus::connection;
