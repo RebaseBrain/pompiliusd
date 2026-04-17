@@ -35,43 +35,43 @@ pub struct Cloud {
 impl CloudApi for Cloud {
     async fn list_profiles(&self) -> String {
         match self.rclone.list_profiles().await {
-            Ok(profiles) => to_ok(StatusCode::OK, profiles),
-            Err(e) => e.into(),
+            Ok(res) => to_ok(StatusCode::OK, res),
+            Err(err) => err.into(),
         }
     }
 
     async fn create_profile(&self, profile_name: &str, domain: &str) -> String {
         match self.rclone.create_config(profile_name, domain).await {
             Ok(res) => to_ok(StatusCode::OK, res),
-            Err(err) => err.to_string(),
+            Err(err) => err.into(),
         }
     }
 
     async fn delete_profile(&self, profile_name: &str) -> String {
         match self.rclone.delete_profile(profile_name).await {
             Ok(res) => to_ok(StatusCode::OK, res),
-            Err(err) => err.to_string(),
+            Err(err) => err.into(),
         }
     }
 
     async fn mount(&self, profile_name: &str, domain: &str, file_path: &str) -> String {
         match self.rclone.mount(profile_name, domain, file_path).await {
             Ok(res) => to_ok(StatusCode::OK, res),
-            Err(err) => err.to_string(),
+            Err(err) => err.into(),
         }
     }
 
     async fn link(&self, profile_name: &str, path: &str) -> String {
         match self.rclone.link(profile_name, path).await {
-            Ok(url) => to_ok(StatusCode::OK, url),
-            Err(e) => e.into(),
+            Ok(res) => to_ok(StatusCode::OK, res),
+            Err(err) => err.into(),
         }
     }
 
     async fn cache_directory(&self, profile_name: &str, path: &str) -> String {
         match self.rclone.cache_directory(profile_name, path).await {
             Ok(res) => to_ok(StatusCode::OK, res),
-            Err(e) => e.into(),
+            Err(err) => err.into(),
         }
     }
 }
