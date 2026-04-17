@@ -1,3 +1,5 @@
+use std::process::Output;
+
 use reqwest::StatusCode;
 use zbus::interface;
 
@@ -22,6 +24,7 @@ pub trait CloudApi {
         file_path: &str,
     ) -> impl Future<Output = String>;
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
+    fn cache_directory(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
 }
 
 pub struct Cloud {
@@ -61,6 +64,13 @@ impl CloudApi for Cloud {
     async fn link(&self, profile_name: &str, path: &str) -> String {
         match self.rclone.link(profile_name, path).await {
             Ok(url) => to_ok(StatusCode::OK, url),
+            Err(e) => e.into(),
+        }
+    }
+
+    async fn cache_directory(&self, profile_name: &str, path: &str) -> String {
+        match self.rclone.cache_directory(profile_name, path).await {
+            Ok(res) => to_ok(StatusCode::OK, res),
             Err(e) => e.into(),
         }
     }

@@ -4,7 +4,7 @@ use crate::{
 };
 use reqwest::{Client, StatusCode};
 use serde_json::json;
-use std::collections::HashMap;
+use std::{collections::HashMap, process::Output};
 type Result<T> = std::result::Result<T, CloudError>;
 
 pub trait RcloneApi {
@@ -22,6 +22,11 @@ pub trait RcloneApi {
         file_path: &str,
     ) -> impl Future<Output = Result<String>>;
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = Result<String>>;
+    fn cache_directory(
+        &self,
+        profile_name: &str,
+        path: &str,
+    ) -> impl Future<Output = Result<String>>;
 }
 
 pub struct RcClone {
@@ -146,6 +151,33 @@ impl RcloneApi for RcClone {
                 status: StatusCode::NOT_FOUND,
                 message: "No link generated".to_string(),
             }),
+        }
+    }
+
+    async fn cache_directory(&self, profile_name: &str, path: &str) -> Result<String> {
+        let body = json!({
+            "fs": format!("{}:", profile_name),
+            "dir": path,
+            "recursive": true,
+            "prefetch": true,
+            "_async": true
+        });
+
+        let response = self
+            .client
+            .post(format!("{}vfs/refresh", self.url))
+            .json(&body)
+            .send()
+            .await
+            .map_err(CloudError::ReqwestError)?;
+
+        if response.status().is_success() {
+            Ok(format!("Success: {} cached", path))
+        } else {
+            Err(CloudError::RcloneError {
+                status: StatusCode::CONFLICT,
+                message: "Failed to cache".into(),
+            })
         }
     }
 }
