@@ -1,9 +1,11 @@
 use reqwest::{Client, StatusCode};
 use std::collections::HashMap;
 
-use crate::{entities::{ConfigCreateRequest, ListRemotesResponse}, error::CloudError};
+use crate::{
+    entities::{ConfigCreateRequest, ListRemotesResponse},
+    error::CloudError,
+};
 type Result<T> = std::result::Result<T, CloudError>;
-
 
 pub trait RcloneApi {
     fn list_profiles(&self) -> impl Future<Output = Result<Vec<String>>>;
@@ -14,7 +16,7 @@ pub trait RcloneApi {
     ) -> impl Future<Output = Result<String>>;
 
     fn delete_config(&self, profile_name: &str) -> impl Future<Output = Result<String>>;
-    fn mount(&self, profile_name: &str, domen: &str) -> impl Future<Output = Result<String>>;
+    fn mount(&self, profile_name: &str, domain: &str) -> impl Future<Output = Result<String>>;
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = Result<String>>;
 }
 
