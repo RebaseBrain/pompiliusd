@@ -1,10 +1,14 @@
+use reqwest::StatusCode;
 use zbus::interface;
 
-use crate::rclone_api::RcClone;
+use crate::{
+    json_result::to_ok,
+    rclone_api::{RcClone, RcloneApi},
+};
 
+pub mod entities;
 pub mod error;
 pub mod json_result;
-pub mod entities;
 pub mod rclone_api;
 
 pub trait CloudeApi {
@@ -22,7 +26,10 @@ pub struct Cloude {
 #[interface(name = "org.zbus.cloud_api")]
 impl CloudeApi for Cloude {
     async fn list_profiles(&self) -> String {
-        todo!()
+        match self.rclone.list_profiles().await {
+            Ok(profiles) => to_ok(StatusCode::OK, profiles),
+            Err(e) => e.into(),
+        }
     }
 
     async fn config_create(&self, profile_name: &str, domen: &str) -> String {
@@ -38,6 +45,9 @@ impl CloudeApi for Cloude {
     }
 
     async fn link(&self, profile_name: &str, path: &str) -> String {
-        todo!()
+        match self.rclone.link(profile_name, path).await {
+            Ok(url) => to_ok(StatusCode::OK, url),
+            Err(e) => e.into(),
+        }
     }
 }
