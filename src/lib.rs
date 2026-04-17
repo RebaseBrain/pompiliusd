@@ -11,7 +11,7 @@ pub mod error;
 pub mod json_result;
 pub mod rclone_api;
 
-pub trait CloudeApi {
+pub trait CloudApi {
     fn list_profiles(&self) -> impl Future<Output = String>;
     fn config_create(&self, profile_name: &str, domen: &str) -> impl Future<Output = String>;
     fn delete_profile(&self, profile_name: &str) -> impl Future<Output = String>;
@@ -19,12 +19,12 @@ pub trait CloudeApi {
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
 }
 
-pub struct Cloude {
+pub struct Cloud {
     pub rclone: RcClone,
 }
 
 #[interface(name = "org.zbus.cloud_api")]
-impl CloudeApi for Cloude {
+impl CloudApi for Cloud {
     async fn list_profiles(&self) -> String {
         match self.rclone.list_profiles().await {
             Ok(profiles) => to_ok(StatusCode::OK, profiles),
