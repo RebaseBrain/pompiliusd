@@ -37,7 +37,10 @@ impl CloudeApi for Cloude {
     }
 
     async fn delete_profile(&self, profile_name: &str) -> String {
-        todo!()
+        match self.rclone.delete_profile(profile_name).await {
+            Ok(res) => to_ok(StatusCode::OK, res),
+            Err(err) => err.to_string(),
+        }
     }
 
     async fn mount(&self, profile_name: &str, domen: &str) -> String {
