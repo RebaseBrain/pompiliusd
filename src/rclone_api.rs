@@ -7,13 +7,14 @@ type Result<T> = std::result::Result<T, CloudError>;
 
 pub trait RcloneApi {
     fn list_profiles(&self) -> impl Future<Output = Result<Vec<String>>>;
-    fn config_create(
+    fn create_config(
         &self,
         profile_name: &str,
         domain: &str,
     ) -> impl Future<Output = Result<String>>;
-    fn delete_profile(&self, profile_name: &str) -> impl Future<Output = Result<String>>;
-    fn mount(&self, profile_name: &str, domain: &str) -> impl Future<Output = Result<String>>;
+
+    fn delete_config(&self, profile_name: &str) -> impl Future<Output = Result<String>>;
+    fn mount(&self, profile_name: &str, domen: &str) -> impl Future<Output = Result<String>>;
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = Result<String>>;
 }
 
@@ -39,7 +40,7 @@ impl RcloneApi for RcClone {
         Ok(data.remotes)
     }
 
-    async fn config_create(&self, profile_name: &str, domain: &str) -> Result<String> {
+    async fn create_config(&self, profile_name: &str, domen: &str) -> Result<String> {
         let body = ConfigCreateRequest {
             name: profile_name.to_string(),
             r_type: domain.to_string(),
@@ -64,7 +65,7 @@ impl RcloneApi for RcClone {
         }
     }
 
-    async fn delete_profile(&self, profile_name: &str) -> Result<String> {
+    async fn delete_config(&self, profile_name: &str) -> Result<String> {
         let body = HashMap::from([("name", profile_name)]);
 
         self.client

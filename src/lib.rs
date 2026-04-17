@@ -13,7 +13,7 @@ pub mod rclone_api;
 
 pub trait CloudApi {
     fn list_profiles(&self) -> impl Future<Output = String>;
-    fn config_create(&self, profile_name: &str, domain: &str) -> impl Future<Output = String>;
+    fn create_profile(&self, profile_name: &str, domen: &str) -> impl Future<Output = String>;
     fn delete_profile(&self, profile_name: &str) -> impl Future<Output = String>;
     fn mount(&self, profile_name: &str, domain: &str) -> impl Future<Output = String>;
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
@@ -32,12 +32,18 @@ impl CloudApi for Cloud {
         }
     }
 
-    async fn config_create(&self, profile_name: &str, domain: &str) -> String {
-        todo!()
+    async fn create_profile(&self, profile_name: &str, domen: &str) -> String {
+        match self.rclone.create_config(profile_name, domen).await {
+            Ok(res) => to_ok(StatusCode::OK, res),
+            Err(err) => err.to_string(),
+        }
     }
 
     async fn delete_profile(&self, profile_name: &str) -> String {
-        todo!()
+        match self.rclone.delete_config(profile_name).await {
+            Ok(res) => to_ok(StatusCode::OK, res),
+            Err(err) => err.to_string(),
+        }
     }
 
     async fn mount(&self, profile_name: &str, domain: &str) -> String {
