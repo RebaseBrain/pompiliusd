@@ -40,7 +40,7 @@ impl RcloneApi for RcClone {
         Ok(data.remotes)
     }
 
-    async fn create_config(&self, profile_name: &str, domen: &str) -> Result<String> {
+    async fn create_config(&self, profile_name: &str, domain: &str) -> Result<String> {
         let body = ConfigCreateRequest {
             name: profile_name.to_string(),
             r_type: domain.to_string(),
