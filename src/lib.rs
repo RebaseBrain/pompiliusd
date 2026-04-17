@@ -18,7 +18,7 @@ pub trait CloudApi {
     fn mount(
         &self,
         profile_name: &str,
-        domen: &str,
+        domain: &str,
         file_path: &str,
     ) -> impl Future<Output = String>;
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
@@ -28,7 +28,7 @@ pub struct Cloud {
     pub rclone: RcClone,
 }
 
-#[interface(name = "org.zbus.cloud_api")]
+#[interface(name = "org.zbus.pompiliusd")]
 impl CloudApi for Cloud {
     async fn list_profiles(&self) -> String {
         match self.rclone.list_profiles().await {
@@ -51,8 +51,8 @@ impl CloudApi for Cloud {
         }
     }
 
-    async fn mount(&self, profile_name: &str, domen: &str, file_path: &str) -> String {
-        match self.rclone.mount(profile_name, domen, file_path).await {
+    async fn mount(&self, profile_name: &str, domain: &str, file_path: &str) -> String {
+        match self.rclone.mount(profile_name, domain, file_path).await {
             Ok(res) => to_ok(StatusCode::OK, res),
             Err(err) => err.to_string(),
         }

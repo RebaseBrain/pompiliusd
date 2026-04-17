@@ -18,7 +18,7 @@ pub trait RcloneApi {
     fn mount(
         &self,
         profile_name: &str,
-        domen: &str,
+        domain: &str,
         file_path: &str,
     ) -> impl Future<Output = Result<String>>;
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = Result<String>>;
@@ -91,7 +91,7 @@ impl RcloneApi for RcClone {
         Ok(format!("Success: Profile {} deleted", profile_name))
     }
 
-    async fn mount(&self, profile_name: &str, _domen: &str, file_path: &str) -> Result<String> {
+    async fn mount(&self, profile_name: &str, _domain: &str, file_path: &str) -> Result<String> {
         let body = json!({
             "fs": format!("{}:/", profile_name),
             "mountPoint": format!("{}", file_path),

@@ -12,8 +12,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         },
     };
     let _conn = connection::Builder::session()?
-        .name("org.zbus.cloud_api")?
-        .serve_at("/org/zbus/cloud_api", cloud)?
+        .name("org.zbus.pompiliusd")?
+        .serve_at("/org/zbus/pompiliusd", cloud)?
         .build()
         .await?;
 
