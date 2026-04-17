@@ -1,9 +1,11 @@
 use reqwest::{Client, StatusCode};
 use std::collections::HashMap;
 
-use crate::{entities::{ConfigCreateRequest, ListRemotesResponse}, error::CloudeError};
+use crate::{
+    entities::{ConfigCreateRequest, ListRemotesResponse},
+    error::CloudeError,
+};
 type Result<T> = std::result::Result<T, CloudeError>;
-
 
 pub trait RcloneApi {
     fn list_profiles(&self) -> impl Future<Output = Result<Vec<String>>>;
@@ -13,7 +15,12 @@ pub trait RcloneApi {
         domen: &str,
     ) -> impl Future<Output = Result<String>>;
     fn delete_profile(&self, profile_name: &str) -> impl Future<Output = Result<String>>;
-    fn mount(&self, profile_name: &str, domen: &str) -> impl Future<Output = Result<String>>;
+    fn mount(
+        &self,
+        profile_name: &str,
+        domen: &str,
+        file_path: &str,
+    ) -> impl Future<Output = Result<String>>;
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = Result<String>>;
 }
 
@@ -77,10 +84,10 @@ impl RcloneApi for RcClone {
         Ok(format!("Success: Profile {} deleted", profile_name))
     }
 
-    async fn mount(&self, profile_name: &str, _domen: &str) -> Result<String> {
+    async fn mount(&self, profile_name: &str, _domen: &str, file_path: &str) -> Result<String> {
         let body = HashMap::from([
-            ("fs", profile_name.to_string() + ":"),
-            ("mountPoint", format!("/tmp/{}", profile_name)),
+            ("fs", profile_name.to_string() + ":/"),
+            ("mountPoint", format!("{}{}", file_path, profile_name)),
         ]);
 
         self.client

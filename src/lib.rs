@@ -1,17 +1,26 @@
+use reqwest::StatusCode;
 use zbus::interface;
 
-use crate::rclone_api::RcClone;
+use crate::{
+    json_result::to_ok,
+    rclone_api::{RcClone, RcloneApi},
+};
 
+pub mod entities;
 pub mod error;
 pub mod json_result;
-pub mod entities;
 pub mod rclone_api;
 
 pub trait CloudeApi {
     fn list_profiles(&self) -> impl Future<Output = String>;
     fn config_create(&self, profile_name: &str, domen: &str) -> impl Future<Output = String>;
     fn delete_profile(&self, profile_name: &str) -> impl Future<Output = String>;
-    fn mount(&self, profile_name: &str, domen: &str) -> impl Future<Output = String>;
+    fn mount(
+        &self,
+        profile_name: &str,
+        domen: &str,
+        file_path: &str,
+    ) -> impl Future<Output = String>;
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
 }
 
@@ -33,8 +42,11 @@ impl CloudeApi for Cloude {
         todo!()
     }
 
-    async fn mount(&self, profile_name: &str, domen: &str) -> String {
-        todo!()
+    async fn mount(&self, profile_name: &str, domen: &str, file_path: &str) -> String {
+        match self.rclone.mount(profile_name, domen, file_path).await {
+            Ok(res) => to_ok(StatusCode::OK, res),
+            Err(err) => err.to_string(),
+        }
     }
 
     async fn link(&self, profile_name: &str, path: &str) -> String {
