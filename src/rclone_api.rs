@@ -2,13 +2,13 @@ use reqwest::{Client, StatusCode};
 use std::collections::HashMap;
 
 use crate::{
-    entities::{ConfigCreateRequest, ListRemotesResponse},
+    entities::{ConfigCreateRequest, RemoteConfig},
     error::CloudError,
 };
 type Result<T> = std::result::Result<T, CloudError>;
 
 pub trait RcloneApi {
-    fn list_profiles(&self) -> impl Future<Output = Result<Vec<String>>>;
+    fn list_profiles(&self) -> impl Future<Output = Result<Vec<(String, String)>>>;
     fn create_config(
         &self,
         profile_name: &str,
@@ -26,20 +26,23 @@ pub struct RcClone {
 }
 
 impl RcloneApi for RcClone {
-    async fn list_profiles(&self) -> Result<Vec<String>> {
+    async fn list_profiles(&self) -> Result<Vec<(String, String)>> {
         let response = self
             .client
-            .post(format!("{}config/listremotes", self.url))
+            .post(format!("{}config/dump", self.url))
             .send()
             .await
             .map_err(CloudError::ReqwestError)?;
 
-        let data: ListRemotesResponse = response
+        let data: HashMap<String, RemoteConfig> = response
             .json()
             .await
             .map_err(|err| CloudError::RcloneError((StatusCode::IM_A_TEAPOT, err.to_string())))?;
 
-        Ok(data.remotes)
+        Ok(data
+            .into_iter()
+            .map(|(name, _type)| (name, _type.r#type))
+            .collect())
     }
 
     async fn create_config(&self, profile_name: &str, domain: &str) -> Result<String> {
