@@ -1,5 +1,3 @@
-use std::process::Output;
-
 use reqwest::StatusCode;
 use zbus::interface;
 
@@ -20,6 +18,14 @@ pub trait CloudApi {
     fn mount(&self, profile_name: &str, file_path: &str) -> impl Future<Output = String>;
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
     fn cache_directory(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
+    fn refresh(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
+    fn delete_cache_file(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
+    fn delete_cache_directory(
+        &self,
+        profile_name: &str,
+        path: &str,
+    ) -> impl Future<Output = String>;
+    fn delete_cache_path(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
 }
 
 pub struct Cloud {
@@ -65,6 +71,34 @@ impl CloudApi for Cloud {
 
     async fn cache_directory(&self, profile_name: &str, path: &str) -> String {
         match self.rclone.cache_directory(profile_name, path).await {
+            Ok(res) => to_ok(StatusCode::OK, res),
+            Err(err) => err.into(),
+        }
+    }
+
+    async fn refresh(&self, profile_name: &str, path: &str) -> String {
+        match self.rclone.refresh(profile_name, path).await {
+            Ok(res) => to_ok(StatusCode::OK, res),
+            Err(err) => err.into(),
+        }
+    }
+
+    async fn delete_cache_file(&self, profile_name: &str, path: &str) -> String {
+        match self.rclone.delete_cache_file(profile_name, path).await {
+            Ok(res) => to_ok(StatusCode::OK, res),
+            Err(err) => err.into(),
+        }
+    }
+
+    async fn delete_cache_directory(&self, profile_name: &str, path: &str) -> String {
+        match self.rclone.delete_cache_directory(profile_name, path).await {
+            Ok(res) => to_ok(StatusCode::OK, res),
+            Err(err) => err.into(),
+        }
+    }
+
+    async fn delete_cache_path(&self, profile_name: &str, path: &str) -> String {
+        match self.rclone.delete_cache_path(profile_name, path).await {
             Ok(res) => to_ok(StatusCode::OK, res),
             Err(err) => err.into(),
         }

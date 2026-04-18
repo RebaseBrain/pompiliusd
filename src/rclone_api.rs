@@ -4,10 +4,17 @@ use crate::{
 };
 use reqwest::{Client, StatusCode};
 use serde_json::json;
-use std::{collections::HashMap, process::Output};
+use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
 type Result<T> = std::result::Result<T, CloudError>;
 
 pub trait RcloneApi {
+    fn delete_cache_path(
+        &self,
+        profile_name: &str,
+        remote_path: &str,
+    ) -> impl Future<Output = Result<String>>;
     fn list_profiles(&self) -> impl Future<Output = Result<Vec<(String, String)>>>;
     fn create_config(
         &self,
@@ -22,6 +29,18 @@ pub trait RcloneApi {
         profile_name: &str,
         path: &str,
     ) -> impl Future<Output = Result<String>>;
+    fn refresh(&self, profile_name: &str, path: &str) -> impl Future<Output = Result<String>>;
+    fn delete_cache_file(
+        &self,
+        profile_name: &str,
+        path: &str,
+    ) -> impl Future<Output = Result<String>>;
+
+    fn delete_cache_directory(
+        &self,
+        profile_name: &str,
+        path: &str,
+    ) -> impl Future<Output = Result<String>>;
 }
 
 pub struct RcClone {
@@ -30,6 +49,38 @@ pub struct RcClone {
 }
 
 impl RcloneApi for RcClone {
+    async fn delete_cache_path(&self, profile_name: &str, remote_path: &str) -> Result<String> {
+        // 1. Формируем путь к кешу (обычно это ~/.cache/rclone/vfs/)
+        // В идеале путь к кеш-директории должен быть в конфиге вашего приложения
+        let cache_base = format!(
+            "{}/.cache/rclone/vfs/{}/",
+            std::env::var("HOME").unwrap(),
+            profile_name
+        );
+        let full_path = Path::new(&cache_base).join(remote_path);
+
+        if full_path.exists() {
+            if full_path.is_dir() {
+                fs::remove_dir_all(&full_path).map_err(CloudError::IoError)?;
+            } else {
+                fs::remove_file(&full_path).map_err(CloudError::IoError)?;
+            }
+
+            if full_path.is_dir() {
+                let _ = self.delete_cache_directory(profile_name, remote_path).await;
+            } else {
+                let _ = self.delete_cache_file(profile_name, remote_path).await;
+            }
+
+            Ok(format!(
+                "Локальный кеш для {} удален. Файл скачается заново при обращении.",
+                remote_path
+            ))
+        } else {
+            Ok("Файл и так не был закеширован".to_string())
+        }
+    }
+
     async fn list_profiles(&self) -> Result<Vec<(String, String)>> {
         let response = self
             .client
@@ -101,9 +152,10 @@ impl RcloneApi for RcClone {
             "mountPoint": mount_path_str,
             "vfsOpt": {
                 "CacheMode": "full",
-                "CacheMaxAge": "3600s",
+                "CacheMaxAge": "10h",
                 "CacheMaxSize": "10G",
-                "CachePollInterval": "1m"
+                "CachePollInterval": "1s",
+                "ReadAhead": 0
             }
         });
 
@@ -167,7 +219,6 @@ impl RcloneApi for RcClone {
             "dir": path,
             "recursive": true,
             "prefetch": true,
-            "_async": true
         });
 
         let response = self
@@ -183,7 +234,80 @@ impl RcloneApi for RcClone {
         } else {
             Err(CloudError::RcloneError {
                 status: StatusCode::CONFLICT,
-                message: "Failed to cache".into(),
+                message: "Failed to cache directory".into(),
+            })
+        }
+    }
+
+    async fn refresh(&self, profile_name: &str, path: &str) -> Result<String> {
+        let body = json!({
+            "fs": format!("{}:", profile_name),
+            "file": path,
+            "_async": true
+        });
+
+        let response = self
+            .client
+            .post(format!("{}vfs/refresh", self.url))
+            .json(&body)
+            .send()
+            .await
+            .map_err(CloudError::ReqwestError)?;
+
+        if response.status().is_success() {
+            Ok(format!("Success: File {} cached", path))
+        } else {
+            Err(CloudError::RcloneError {
+                status: StatusCode::CONFLICT,
+                message: "Failed to cache file".into(),
+            })
+        }
+    }
+
+    async fn delete_cache_file(&self, profile_name: &str, path: &str) -> Result<String> {
+        let body = json!({
+            "fs": format!("{}:", profile_name),
+            "file": path,
+        });
+
+        let response = self
+            .client
+            .post(format!("{}vfs/forget", self.url))
+            .json(&body)
+            .send()
+            .await
+            .map_err(CloudError::ReqwestError)?;
+
+        if response.status().is_success() {
+            Ok(format!("Success: {} evicted from local cache", path))
+        } else {
+            Err(CloudError::RcloneError {
+                status: StatusCode::CONFLICT,
+                message: "Failed to evict from cache".into(),
+            })
+        }
+    }
+
+    async fn delete_cache_directory(&self, profile_name: &str, path: &str) -> Result<String> {
+        let body = json!({
+            "fs": format!("{}:", profile_name),
+            "dir": path,
+        });
+
+        let response = self
+            .client
+            .post(format!("{}vfs/forget", self.url))
+            .json(&body)
+            .send()
+            .await
+            .map_err(CloudError::ReqwestError)?;
+
+        if response.status().is_success() {
+            Ok(format!("Success: {} evicted from local cache", path))
+        } else {
+            Err(CloudError::RcloneError {
+                status: StatusCode::CONFLICT,
+                message: "Failed to evict from cache".into(),
             })
         }
     }
