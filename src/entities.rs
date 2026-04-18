@@ -63,16 +63,23 @@ pub struct ProvidersResponse {
     pub providers: Vec<RcloneProvider>,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct Transferring {
-    pub name: String,
-    pub percentage: u32,
-    pub size: i64,
-    pub bytes: i64,
-    pub speed: f64,
+#[derive(Deserialize, Debug, Default)]
+pub struct VfsMetadata {
+    #[serde(rename = "Dirty")]
+    pub dirty: bool,
+}
+
+#[derive(Deserialize, Debug, Default)]
+pub struct VfsStatsResponse {
+    pub metadata: Option<VfsMetadata>,
+}
+
+#[derive(Deserialize, Debug, Default)]
+pub struct CoreStatsResponse {
+    pub transferring: Vec<Transferring>,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct CoreStatsResponse {
-    pub transferring: Vec<Transferring>,
+pub struct Transferring {
+    pub name: String,
 }

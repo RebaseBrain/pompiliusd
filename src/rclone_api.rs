@@ -1,4 +1,5 @@
 use crate::{entities::*, error::CloudError, setup_conf_dir};
+use futures::future::join_all;
 use reqwest::{Client, StatusCode};
 use serde_json::json;
 use std::fs;
@@ -184,47 +185,73 @@ impl RcloneApi for Rclone {
         profile_name: &str,
         paths: Vec<String>,
     ) -> Result<HashMap<String, String>> {
-        let mut statuses = HashMap::new();
-        let home = std::env::var("HOME").unwrap_or_default();
+        let mut results = HashMap::new();
 
-        let stats_res = self
+        let core_stats_res = self
             .client
             .post(format!("{}core/stats", self.url))
             .send()
             .await;
 
-        let active_transfers: Vec<String> = if let Ok(resp) = stats_res {
-            let body: CoreStatsResponse = resp.json().await.unwrap_or(CoreStatsResponse {
-                transferring: vec![],
-            });
+        let active_transfers: Vec<String> = if let Ok(resp) = core_stats_res {
+            let body: CoreStatsResponse = resp.json().await.unwrap_or_default();
             body.transferring.into_iter().map(|t| t.name).collect()
         } else {
             vec![]
         };
 
-        for path in paths {
-            let relative_path = path.trim_start_matches('/');
+        let vfs_requests = paths.iter().map(|path| {
+            let relative_path = path.trim_start_matches('/').to_string();
+            let url = format!("{}vfs/stats", self.url);
+            let client = self.client.clone();
+            let profile = profile_name.to_string();
 
-            if active_transfers.iter().any(|t| t.contains(relative_path)) {
-                statuses.insert(path, "SYNCING".to_string());
+            async move {
+                let resp = client
+                    .post(url)
+                    .json(&json!({
+                        "fs": format!("{}:", profile),
+                        "item": relative_path,
+                    }))
+                    .send()
+                    .await;
+
+                match resp {
+                    Ok(r) => (relative_path, r.json::<VfsStatsResponse>().await.ok()),
+                    Err(_) => (relative_path, None),
+                }
+            }
+        });
+
+        let vfs_responses = join_all(vfs_requests).await;
+
+        for (rel_path, vfs_stats) in vfs_responses {
+            let original_path = paths
+                .iter()
+                .find(|p| p.trim_start_matches('/') == rel_path)
+                .unwrap();
+
+            if active_transfers.iter().any(|t| t.contains(&rel_path)) {
+                results.insert(original_path.clone(), "SYNCING".to_string());
                 continue;
             }
 
-            let cache_path = std::path::Path::new(&home)
-                .join(".cache/rclone/vfs")
-                .join(profile_name)
-                .join(relative_path);
-
-            let status = if cache_path.exists() && cache_path.is_file() {
-                "CACHED"
-            } else {
-                "NOT_CACHED"
-            };
-
-            statuses.insert(path, status.to_string());
+            match vfs_stats {
+                Some(stats) if stats.metadata.is_some() => {
+                    let metadata = stats.metadata.unwrap();
+                    if metadata.dirty {
+                        results.insert(original_path.clone(), "MODIFIED".to_string());
+                    } else {
+                        results.insert(original_path.clone(), "CACHED".to_string());
+                    }
+                }
+                _ => {
+                    results.insert(original_path.clone(), "NOT_CACHED".to_string());
+                }
+            }
         }
 
-        Ok(statuses)
+        Ok(results)
     }
 
     async fn create_config(
