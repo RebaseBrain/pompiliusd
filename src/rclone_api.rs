@@ -1,3 +1,4 @@
+use crate::cache::get_all_files;
 use crate::{entities::*, error::CloudError, setup_conf_dir};
 use reqwest::{Client, StatusCode};
 use serde_json::json;
@@ -34,11 +35,7 @@ pub trait RcloneApi {
         cache_max_age: &str,
     ) -> impl Future<Output = Result<String>>;
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = Result<String>>;
-    fn cache_directory(
-        &self,
-        profile_name: &str,
-        path: &str,
-    ) -> impl Future<Output = Result<String>>;
+    fn cache_directory(&self, path: &str) -> impl Future<Output = Result<String>>;
     fn refresh(&self, profile_name: &str, path: &str) -> impl Future<Output = Result<String>>;
     fn delete_cache_file(
         &self,
@@ -315,26 +312,23 @@ impl RcloneApi for Rclone {
         );
 
         let body = json!({
-                "fs": format!("{}:", profile_name),
-                "mountPoint": mount_path_str,
-                "vfsOpt": {
-                    "CacheMode": "full",
-                    "CacheMaxAge": &cache_max_age,
-                    "CacheMaxSize": &cache_max_size,
-                    "CachePollInterval": "1s",
-                    "ReadAhead": 0,
+            "fs": format!("{}:", profile_name),
+            "mountPoint": mount_path_str,
+            "vfsOpt": {
+                "CacheMode": "full",
+                "CacheMaxAge": &cache_max_age,
+                "CacheMaxSize": &cache_max_size,
+                "CachePollInterval": "1s",
+                "ReadAhead": 0,
 
-        // 2. Атрибуты (размер, время модификации).
-        // Ставим в 0, чтобы FUSE всегда спрашивал rclone, а не брал из кеша ядра
-        "AttrTimeout": "0s",
-        "PollInterval": "10s",
-        "DirCacheTime": "10s",
+                "AttrTimeout": "0s",
+                "PollInterval": "10s",
+                "DirCacheTime": "10s",
 
-        // 3. Важно для отображения новых файлов
-        "NoChecksum": false,
-        "NoModTime": false,
-                }
-            });
+                "NoChecksum": false,
+                "NoModTime": false,
+            }
+        });
 
         println!("{body}");
 
@@ -391,30 +385,28 @@ impl RcloneApi for Rclone {
         }
     }
 
-    async fn cache_directory(&self, profile_name: &str, path: &str) -> Result<String> {
-        let body = json!({
-            "fs": format!("{}:", profile_name),
-            "dir": path,
-            "recursive": true,
-            "prefetch": true,
-        });
+    async fn cache_directory(&self, path: &str) -> Result<String> {
+        let mut file_paths = Vec::new();
 
-        let response = self
-            .client
-            .post(format!("{}vfs/refresh", self.url))
-            .json(&body)
-            .send()
-            .await
-            .map_err(CloudError::ReqwestError)?;
+        // 1. Собираем все файлы рекурсивно
+        get_all_files(Path::new(path), &mut file_paths);
 
-        if response.status().is_success() {
-            Ok(format!("Success: {} cached", path))
-        } else {
-            Err(CloudError::RcloneError {
-                status: StatusCode::CONFLICT,
-                message: "Failed to cache directory".into(),
-            })
+        if file_paths.is_empty() {
+            println!("Файлы не найдены.");
+            return Ok("Empty dir".to_string());
         }
+
+        let _ = Command::new("cat")
+            .args(&file_paths)
+            .stdout(Stdio::null())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .map_err(|e| CloudError::RcloneError {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                message: format!("Failed to spawn rclone: {}", e),
+            })?;
+
+        Ok("Cached".to_string())
     }
 
     async fn refresh(&self, profile_name: &str, path: &str) -> Result<String> {

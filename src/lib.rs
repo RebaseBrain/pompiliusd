@@ -11,6 +11,7 @@ pub mod error;
 pub mod json_result;
 pub mod rclone_api;
 pub mod setup_conf_dir;
+pub mod cache;
 
 pub trait CloudApi {
     fn list_profiles(&self) -> impl Future<Output = String>;
@@ -30,7 +31,7 @@ pub trait CloudApi {
         cache_max_age: &str,
     ) -> impl Future<Output = String>;
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
-    fn cache_directory(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
+    fn cache_directory(&self, path: &str) -> impl Future<Output = String>;
     fn refresh(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
     fn delete_cache_file(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
     fn delete_cache_directory(
@@ -103,8 +104,8 @@ impl CloudApi for Cloud {
         }
     }
 
-    async fn cache_directory(&self, profile_name: &str, path: &str) -> String {
-        match self.rclone.cache_directory(profile_name, path).await {
+    async fn cache_directory(&self, path: &str) -> String {
+        match self.rclone.cache_directory(path).await {
             Ok(res) => to_ok(StatusCode::OK, res),
             Err(err) => err.into(),
         }
