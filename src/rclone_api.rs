@@ -188,7 +188,7 @@ impl RcloneApi for Rclone {
         let home = std::env::var("HOME").unwrap_or_default();
 
         let meta_base_path = std::path::Path::new(&home)
-            .join(".cache/rclone/vfsMeta")
+            .join(".cache/rclone/vfs")
             .join(profile_name);
 
         let core_stats_res = self
