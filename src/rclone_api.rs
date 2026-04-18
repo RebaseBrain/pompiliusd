@@ -1,4 +1,4 @@
-use crate::{entities::RemoteConfig, error::CloudError};
+use crate::{entities::RemoteConfig, error::CloudError, setup_conf_dir};
 use reqwest::{Client, StatusCode};
 use serde_json::json;
 use std::{
@@ -212,10 +212,7 @@ impl RcloneApi for Rclone {
             .map_err(CloudError::ReqwestError)?;
 
         if response.status().is_success() {
-            fs::create_dir(format!("{}/.pompiliuys", profile_name))?;
-            let path = format!("{}/{}/.pompiliuys/config", profile_name, file_path);
-            let mut file = File::create(&path)?;
-            file.write_all(profile_name.as_bytes())?;
+            setup_conf_dir::setup(profile_name, file_path)?;
             Ok(format!("Mounting {} started", profile_name))
         } else {
             Err(CloudError::RcloneError {
@@ -239,7 +236,6 @@ impl RcloneApi for Rclone {
             .await
             .map_err(CloudError::ReqwestError)?;
 
-        // Читаем весь JSON для отладки
         let res_json: serde_json::Value =
             response
                 .json()
@@ -249,7 +245,6 @@ impl RcloneApi for Rclone {
                     message: err.to_string(),
                 })?;
 
-        // Печатаем в консоль Rust-приложения, что прислал rclone
         println!("Rclone link response: {:?}", res_json);
 
         match res_json["url"].as_str() {
