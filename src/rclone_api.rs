@@ -22,6 +22,8 @@ pub trait RcloneApi {
         file_path: &str,
     ) -> impl Future<Output = Result<String>>;
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = Result<String>>;
+    fn check_sync(&self, profile_name: &str) -> impl Future<Output = Result<String>>;
+    fn check_connection(&self) -> impl Future<Output = Result<String>>;
 }
 
 pub struct RcClone {
@@ -146,6 +148,29 @@ impl RcloneApi for RcClone {
                 status: StatusCode::NOT_FOUND,
                 message: "No link generated".to_string(),
             }),
+        }
+    }
+
+    async fn check_sync(&self, profile_name: &str) -> Result<String> {
+        todo!();
+    }
+
+    // Проверка жизнеспособности rclone
+    async fn check_connection(&self) -> Result<String> {
+        let response = self
+            .client
+            .post(format!("{}rc/noop", self.url))
+            .send()
+            .await
+            .map_err(CloudError::ReqwestError)?;
+
+        if response.status().is_success() {
+            Ok(format!("Rclone RC is reachable"))
+        } else {
+            Err(CloudError::RcloneError {
+                status: response.status(),
+                message: "Rclone responded but not OK".to_string(),
+            })
         }
     }
 }
