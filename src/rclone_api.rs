@@ -286,11 +286,6 @@ impl RcloneApi for Rclone {
             status = child.wait() => {
                 match status {
                     Ok(s) if s.success() => {
-                        let _ = self.client
-                            .post(format!("{}config/reload", self.url))
-                            .send()
-                            .await;
-
                         Ok(format!("Profile '{}' created successfully", profile_name))
                     }
                     Ok(s) => {
