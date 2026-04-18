@@ -1,15 +1,11 @@
 use crate::{
     entities::{ConfigCreateRequest, RemoteConfig},
     error::CloudError,
+    setup_conf_dir,
 };
 use reqwest::{Client, StatusCode};
 use serde_json::json;
-use std::io::prelude::*;
-use std::{
-    collections::HashMap,
-    fs::{self, File},
-    process::Output,
-};
+use std::collections::HashMap;
 type Result<T> = std::result::Result<T, CloudError>;
 
 pub trait RcloneApi {
@@ -121,10 +117,7 @@ impl RcloneApi for RcClone {
             .map_err(CloudError::ReqwestError)?;
 
         if response.status().is_success() {
-            fs::create_dir(&format!("{}/.pompiliuys", profile_name))?;
-            let path = format!("{}/{}/.pompiliuys/config", profile_name, file_path);
-            let mut file = File::create(&path)?;
-            file.write_all(profile_name.as_bytes())?;
+            setup_conf_dir::setup(profile_name, file_path)?;
             Ok(format!("Mounting {} started", profile_name))
         } else {
             Err(CloudError::RcloneError {

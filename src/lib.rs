@@ -12,6 +12,7 @@ pub mod entities;
 pub mod error;
 pub mod json_result;
 pub mod rclone_api;
+pub mod setup_conf_dir;
 
 pub trait CloudApi {
     fn list_profiles(&self) -> impl Future<Output = String>;

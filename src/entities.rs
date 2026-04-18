@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
@@ -17,4 +18,9 @@ pub struct RemoteConfig {
 
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct Config {
+    pub profiles: BTreeMap<String, String>,
 }
