@@ -11,6 +11,9 @@ pub enum CloudError {
     #[error("Rclone error: {message}")]
     RcloneError { status: StatusCode, message: String },
 
+    #[error("Convert error: {message}")]
+    ConvertError { status: StatusCode, message: String },
+
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
 
@@ -25,6 +28,7 @@ impl From<CloudError> for String {
                 to_err(StatusCode::INTERNAL_SERVER_ERROR, &err.to_string())
             }
             CloudError::RcloneError { status, message } => to_err(status, &message),
+            CloudError::ConvertError { status, message } => to_err(status, &message),
             CloudError::TomlError(err) => to_err(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!("Ошибка создания конфигурационного toml-а: {}", err),
