@@ -26,7 +26,13 @@ pub trait RcloneApi {
         parameters: &str,
     ) -> impl Future<Output = Result<String>>;
     fn delete_profile(&self, profile_name: &str) -> impl Future<Output = Result<String>>;
-    fn mount(&self, profile_name: &str, file_path: &str) -> impl Future<Output = Result<String>>;
+    fn mount(
+        &self,
+        profile_name: &str,
+        file_path: &str,
+        cache_max_size: &str,
+        cache_max_age: &str,
+    ) -> impl Future<Output = Result<String>>;
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = Result<String>>;
     fn cache_directory(
         &self,
@@ -276,22 +282,51 @@ impl RcloneApi for Rclone {
         Ok(format!("Success: Profile {} deleted", profile_name))
     }
 
-    async fn mount(&self, profile_name: &str, file_path: &str) -> Result<String> {
+    async fn mount(
+        &self,
+        profile_name: &str,
+        file_path: &str,
+        cache_max_size: &str,
+        cache_max_age: &str,
+    ) -> Result<String> {
         let mount_path = std::path::Path::new(file_path).join(profile_name);
         std::fs::create_dir_all(&mount_path).map_err(CloudError::IoError)?;
         let mount_path_str = mount_path.to_string_lossy().to_string();
+
+        let cache_max_size = format!(
+            "{}G",
+            cache_max_size
+                .to_lowercase()
+                .parse::<u32>()
+                .map_err(|err| CloudError::ConvertError {
+                    status: StatusCode::UNPROCESSABLE_ENTITY,
+                    message: err.to_string(),
+                })?
+        );
+
+        let cache_max_age = format!(
+            "{}h",
+            cache_max_age.to_lowercase().parse::<u32>().map_err(|err| {
+                CloudError::ConvertError {
+                    status: StatusCode::UNPROCESSABLE_ENTITY,
+                    message: err.to_string(),
+                }
+            })?
+        );
 
         let body = json!({
             "fs": format!("{}:", profile_name),
             "mountPoint": mount_path_str,
             "vfsOpt": {
                 "CacheMode": "full",
-                "CacheMaxAge": "10h",
-                "CacheMaxSize": "10G",
+                "CacheMaxAge": &cache_max_age,
+                "CacheMaxSize": &cache_max_size,
                 "CachePollInterval": "1s",
                 "ReadAhead": 0
             }
         });
+
+        println!("{body}");
 
         let response = self
             .client
