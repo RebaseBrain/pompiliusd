@@ -4,7 +4,12 @@ use crate::{
 };
 use reqwest::{Client, StatusCode};
 use serde_json::json;
-use std::{collections::HashMap, process::Output};
+use std::io::prelude::*;
+use std::{
+    collections::HashMap,
+    fs::{self, File},
+    process::Output,
+};
 type Result<T> = std::result::Result<T, CloudError>;
 
 pub trait RcloneApi {
@@ -101,9 +106,9 @@ impl RcloneApi for RcClone {
             "mountPoint": mount_path_str,
             "vfsOpt": {
                 "CacheMode": "full",
-                "CacheMaxAge": "3600s",
+               // "CacheMaxAge": "3600s",
                 "CacheMaxSize": "10G",
-                "CachePollInterval": "1m"
+               // "CachePollInterval": "1m"
             }
         });
 
@@ -116,6 +121,10 @@ impl RcloneApi for RcClone {
             .map_err(CloudError::ReqwestError)?;
 
         if response.status().is_success() {
+            fs::create_dir(&format!("{}/.pompiliuys", profile_name))?;
+            let path = format!("{}/{}/.pompiliuys/config", profile_name, file_path);
+            let mut file = File::create(&path)?;
+            file.write_all(profile_name.as_bytes())?;
             Ok(format!("Mounting {} started", profile_name))
         } else {
             Err(CloudError::RcloneError {
