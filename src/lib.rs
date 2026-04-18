@@ -17,12 +17,7 @@ pub trait CloudApi {
     fn list_profiles(&self) -> impl Future<Output = String>;
     fn create_profile(&self, profile_name: &str, domain: &str) -> impl Future<Output = String>;
     fn delete_profile(&self, profile_name: &str) -> impl Future<Output = String>;
-    fn mount(
-        &self,
-        profile_name: &str,
-        domain: &str,
-        file_path: &str,
-    ) -> impl Future<Output = String>;
+    fn mount(&self, profile_name: &str, file_path: &str) -> impl Future<Output = String>;
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
     fn cache_directory(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
 }
@@ -54,8 +49,8 @@ impl CloudApi for Cloud {
         }
     }
 
-    async fn mount(&self, profile_name: &str, domain: &str, file_path: &str) -> String {
-        match self.rclone.mount(profile_name, domain, file_path).await {
+    async fn mount(&self, profile_name: &str, file_path: &str) -> String {
+        match self.rclone.mount(profile_name, file_path).await {
             Ok(res) => to_ok(StatusCode::OK, res),
             Err(err) => err.into(),
         }
