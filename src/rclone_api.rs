@@ -4,7 +4,7 @@ use crate::{
 };
 use reqwest::{Client, StatusCode};
 use serde_json::json;
-use std::collections::HashMap;
+use std::{collections::HashMap, process::Output};
 type Result<T> = std::result::Result<T, CloudError>;
 
 pub trait RcloneApi {
@@ -15,13 +15,13 @@ pub trait RcloneApi {
         domain: &str,
     ) -> impl Future<Output = Result<String>>;
     fn delete_profile(&self, profile_name: &str) -> impl Future<Output = Result<String>>;
-    fn mount(
+    fn mount(&self, profile_name: &str, file_path: &str) -> impl Future<Output = Result<String>>;
+    fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = Result<String>>;
+    fn cache_directory(
         &self,
         profile_name: &str,
-        domain: &str,
-        file_path: &str,
+        path: &str,
     ) -> impl Future<Output = Result<String>>;
-    fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = Result<String>>;
 }
 
 pub struct RcClone {
@@ -91,10 +91,14 @@ impl RcloneApi for RcClone {
         Ok(format!("Success: Profile {} deleted", profile_name))
     }
 
-    async fn mount(&self, profile_name: &str, _domain: &str, file_path: &str) -> Result<String> {
+    async fn mount(&self, profile_name: &str, file_path: &str) -> Result<String> {
+        let mount_path = std::path::Path::new(file_path).join(profile_name);
+        std::fs::create_dir_all(&mount_path).map_err(CloudError::IoError)?;
+        let mount_path_str = mount_path.to_string_lossy().to_string();
+
         let body = json!({
-            "fs": format!("{}:/", profile_name),
-            "mountPoint": format!("{}", file_path),
+            "fs": format!("{}:", profile_name),
+            "mountPoint": mount_path_str,
             "vfsOpt": {
                 "CacheMode": "full",
                 "CacheMaxAge": "3600s",
@@ -103,14 +107,22 @@ impl RcloneApi for RcClone {
             }
         });
 
-        self.client
+        let response = self
+            .client
             .post(format!("{}mount/mount", self.url))
             .json(&body)
             .send()
             .await
             .map_err(CloudError::ReqwestError)?;
 
-        Ok(format!("Mounting {} started", profile_name))
+        if response.status().is_success() {
+            Ok(format!("Mounting {} started", profile_name))
+        } else {
+            Err(CloudError::RcloneError {
+                status: StatusCode::NOT_FOUND,
+                message: "Failed to mount".into(),
+            })
+        }
     }
 
     async fn link(&self, profile_name: &str, path: &str) -> Result<String> {
@@ -146,6 +158,33 @@ impl RcloneApi for RcClone {
                 status: StatusCode::NOT_FOUND,
                 message: "No link generated".to_string(),
             }),
+        }
+    }
+
+    async fn cache_directory(&self, profile_name: &str, path: &str) -> Result<String> {
+        let body = json!({
+            "fs": format!("{}:", profile_name),
+            "dir": path,
+            "recursive": true,
+            "prefetch": true,
+            "_async": true
+        });
+
+        let response = self
+            .client
+            .post(format!("{}vfs/refresh", self.url))
+            .json(&body)
+            .send()
+            .await
+            .map_err(CloudError::ReqwestError)?;
+
+        if response.status().is_success() {
+            Ok(format!("Success: {} cached", path))
+        } else {
+            Err(CloudError::RcloneError {
+                status: StatusCode::CONFLICT,
+                message: "Failed to cache".into(),
+            })
         }
     }
 }
