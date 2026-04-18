@@ -1,4 +1,5 @@
 use reqwest::StatusCode;
+use std::collections::HashMap;
 use zbus::interface;
 
 use crate::{
@@ -13,7 +14,12 @@ pub mod rclone_api;
 
 pub trait CloudApi {
     fn list_profiles(&self) -> impl Future<Output = String>;
-    fn create_profile(&self, profile_name: &str, domain: &str) -> impl Future<Output = String>;
+    fn create_profile(
+        &self,
+        profile_name: &str,
+        domain: &str,
+        parameters: HashMap<String, String>,
+    ) -> impl Future<Output = String>;
     fn delete_profile(&self, profile_name: &str) -> impl Future<Output = String>;
     fn mount(&self, profile_name: &str, file_path: &str) -> impl Future<Output = String>;
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
@@ -33,8 +39,17 @@ impl CloudApi for Cloud {
         }
     }
 
-    async fn create_profile(&self, profile_name: &str, domain: &str) -> String {
-        match self.rclone.create_config(profile_name, domain).await {
+    async fn create_profile(
+        &self,
+        profile_name: &str,
+        domain: &str,
+        parameters: HashMap<String, String>,
+    ) -> String {
+        match self
+            .rclone
+            .create_config(profile_name, domain, parameters)
+            .await
+        {
             Ok(res) => to_ok(StatusCode::OK, res),
             Err(err) => err.into(),
         }

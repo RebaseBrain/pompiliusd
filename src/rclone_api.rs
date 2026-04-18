@@ -18,6 +18,7 @@ pub trait RcloneApi {
         &self,
         profile_name: &str,
         domain: &str,
+        parameters: HashMap<String, String>,
     ) -> impl Future<Output = Result<String>>;
     fn delete_profile(&self, profile_name: &str) -> impl Future<Output = Result<String>>;
     fn mount(&self, profile_name: &str, file_path: &str) -> impl Future<Output = Result<String>>;
@@ -79,15 +80,15 @@ impl RcloneApi for Rclone {
             .collect())
     }
 
-    async fn create_config(&self, profile_name: &str, domain: &str) -> Result<String> {
+    async fn create_config(
+        &self,
+        profile_name: &str,
+        domain: &str,
+        parameters: HashMap<String, String>,
+    ) -> Result<String> {
         Self::cleanup_auth_port();
 
         let current_profiles = self.list_profiles().await.unwrap_or_default();
-        println!(
-            "DEBUG: Current profiles known by daemon: {:?}",
-            current_profiles
-        );
-
         if current_profiles
             .iter()
             .any(|(name, _)| name == profile_name)
@@ -96,19 +97,32 @@ impl RcloneApi for Rclone {
             let _ = self.delete_profile(profile_name).await;
         }
 
+        // Base rclone arguments
+        let mut args = vec![
+            "config".to_string(),
+            "create".to_string(),
+            profile_name.to_string(),
+            domain.to_string(),
+        ];
+
+        // Add custom parameters
+        for (key, value) in parameters {
+            args.push(key);
+            args.push(value);
+        }
+
+        // Add rclone flags
+        args.extend([
+            "config_is_local".to_string(),
+            "true".to_string(),
+            "config_login_port".to_string(),
+            "53682".to_string(),
+            "--non-interactive".to_string(),
+            "--quiet".to_string(),
+        ]);
+
         let mut child = Command::new("rclone")
-            .args([
-                "config",
-                "create",
-                profile_name,
-                domain,
-                "config_is_local",
-                "true",
-                "config_login_port",
-                "53682",
-                "--non-interactive",
-                "--quiet",
-            ])
+            .args(&args)
             .stdout(Stdio::null())
             .stderr(Stdio::inherit())
             .spawn()
@@ -117,7 +131,7 @@ impl RcloneApi for Rclone {
                 message: format!("Failed to spawn rclone: {}", e),
             })?;
 
-        let timeout = tokio::time::sleep(std::time::Duration::from_secs(12));
+        let timeout = tokio::time::sleep(std::time::Duration::from_secs(120));
         tokio::pin!(timeout);
 
         tokio::select! {
