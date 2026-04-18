@@ -179,10 +179,31 @@ impl RcloneApi for Rclone {
         paths: Vec<String>,
     ) -> Result<HashMap<String, String>> {
         let mut statuses = HashMap::new();
-        let home = std::env::var("HOME").unwrap_or_else(|_| "".to_string());
+        let home = std::env::var("HOME").unwrap_or_default();
+
+        let stats_res = self
+            .client
+            .post(format!("{}core/stats", self.url))
+            .send()
+            .await;
+
+        let active_transfers: Vec<String> = if let Ok(resp) = stats_res {
+            let body: CoreStatsResponse = resp.json().await.unwrap_or(CoreStatsResponse {
+                transferring: vec![],
+            });
+            body.transferring.into_iter().map(|t| t.name).collect()
+        } else {
+            vec![]
+        };
 
         for path in paths {
             let relative_path = path.trim_start_matches('/');
+
+            if active_transfers.iter().any(|t| t.contains(relative_path)) {
+                statuses.insert(path, "SYNCING".to_string());
+                continue;
+            }
+
             let cache_path = std::path::Path::new(&home)
                 .join(".cache/rclone/vfs")
                 .join(profile_name)
