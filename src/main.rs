@@ -1,4 +1,4 @@
-use pompiliusd::{Cloud, rclone_api::RcClone};
+use pompiliusd::{Cloud, rclone_api::Rclone};
 use reqwest::Client;
 use std::{error::Error, future::pending};
 use zbus::connection;
@@ -6,7 +6,7 @@ use zbus::connection;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let cloud = Cloud {
-        rclone: RcClone {
+        rclone: Rclone {
             client: Client::new(),
             url: String::from("http://127.0.0.1:5572/"),
         },

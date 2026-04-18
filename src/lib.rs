@@ -3,13 +3,14 @@ use zbus::interface;
 
 use crate::{
     json_result::to_ok,
-    rclone_api::{RcClone, RcloneApi},
+    rclone_api::{Rclone, RcloneApi},
 };
 
 pub mod entities;
 pub mod error;
 pub mod json_result;
 pub mod rclone_api;
+pub mod setup_conf_dir;
 
 pub trait CloudApi {
     fn list_profiles(&self) -> impl Future<Output = String>;
@@ -23,10 +24,18 @@ pub trait CloudApi {
     fn mount(&self, profile_name: &str, file_path: &str) -> impl Future<Output = String>;
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
     fn cache_directory(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
+    fn refresh(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
+    fn delete_cache_file(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
+    fn delete_cache_directory(
+        &self,
+        profile_name: &str,
+        path: &str,
+    ) -> impl Future<Output = String>;
+    fn delete_cache_path(&self, profile_name: &str, path: &str) -> impl Future<Output = String>;
 }
 
 pub struct Cloud {
-    pub rclone: RcClone,
+    pub rclone: Rclone,
 }
 
 #[interface(name = "org.zbus.pompiliusd")]
@@ -72,6 +81,34 @@ impl CloudApi for Cloud {
 
     async fn cache_directory(&self, profile_name: &str, path: &str) -> String {
         match self.rclone.cache_directory(profile_name, path).await {
+            Ok(res) => to_ok(StatusCode::OK, res),
+            Err(err) => err.into(),
+        }
+    }
+
+    async fn refresh(&self, profile_name: &str, path: &str) -> String {
+        match self.rclone.refresh(profile_name, path).await {
+            Ok(res) => to_ok(StatusCode::OK, res),
+            Err(err) => err.into(),
+        }
+    }
+
+    async fn delete_cache_file(&self, profile_name: &str, path: &str) -> String {
+        match self.rclone.delete_cache_file(profile_name, path).await {
+            Ok(res) => to_ok(StatusCode::OK, res),
+            Err(err) => err.into(),
+        }
+    }
+
+    async fn delete_cache_directory(&self, profile_name: &str, path: &str) -> String {
+        match self.rclone.delete_cache_directory(profile_name, path).await {
+            Ok(res) => to_ok(StatusCode::OK, res),
+            Err(err) => err.into(),
+        }
+    }
+
+    async fn delete_cache_path(&self, profile_name: &str, path: &str) -> String {
+        match self.rclone.delete_cache_path(profile_name, path).await {
             Ok(res) => to_ok(StatusCode::OK, res),
             Err(err) => err.into(),
         }
