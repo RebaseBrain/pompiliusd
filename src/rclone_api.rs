@@ -15,23 +15,29 @@ pub trait RcloneApi {
         profile_name: &str,
         remote_path: &str,
     ) -> impl Future<Output = Result<String>>;
+
     fn list_profiles(&self) -> impl Future<Output = Result<Vec<(String, String)>>>;
+
     fn get_provider_options(
         &self,
         provider_type: &str,
     ) -> impl Future<Output = Result<Vec<serde_json::Value>>>;
+
     fn get_files_status(
         &self,
         profile_name: &str,
         paths: Vec<String>,
     ) -> impl Future<Output = Result<HashMap<String, String>>>;
+
     fn create_config(
         &self,
         profile_name: &str,
         domain: &str,
         parameters: &str,
     ) -> impl Future<Output = Result<String>>;
+
     fn delete_profile(&self, profile_name: &str) -> impl Future<Output = Result<String>>;
+
     fn mount(
         &self,
         profile_name: &str,
@@ -39,9 +45,13 @@ pub trait RcloneApi {
         cache_max_size: &str,
         cache_max_age: &str,
     ) -> impl Future<Output = Result<String>>;
+
     fn link(&self, profile_name: &str, path: &str) -> impl Future<Output = Result<String>>;
+
     fn cache_directory(&self, path: &str) -> impl Future<Output = Result<String>>;
+
     fn refresh(&self, profile_name: &str, path: &str) -> impl Future<Output = Result<String>>;
+
     fn delete_cache_file(
         &self,
         profile_name: &str,
@@ -363,12 +373,7 @@ impl RcloneApi for Rclone {
                 "CacheMode": "full",
                 "CacheMaxAge": &cache_max_age,
                 "CacheMaxSize": &cache_max_size,
-                "CachePollInterval": "1s",
                 "ReadAhead": 0,
-
-                "PollInterval": "10s",
-                "DirCacheTime": "10s",
-
                 "NoChecksum": false,
                 "NoModTime": false,
             }
