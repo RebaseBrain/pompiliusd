@@ -1,4 +1,5 @@
 use reqwest::StatusCode;
+use serde::Serialize;
 use tokio::net::TcpStream;
 use zbus::interface;
 
@@ -14,6 +15,8 @@ pub mod error;
 pub mod json_result;
 pub mod rclone_api;
 pub mod setup_conf_dir;
+
+type Result<T> = std::result::Result<T, CloudError>;
 
 pub trait CloudApi {
     fn list_profiles(&self) -> impl Future<Output = String>;
@@ -54,9 +57,18 @@ pub struct Cloud {
 }
 
 impl Cloud {
-    async fn check_internet_connection() -> Result<(), CloudError> {
+    async fn check_internet_connection() -> Result<()> {
         let _ = TcpStream::connect("209.85.233.101:80").await?;
         Ok(())
+    }
+    pub async fn executor<T, F, Fut>(&self, func: F) -> Result<T>
+    where
+        T: Serialize,
+        F: FnOnce() -> Fut,
+        Fut: Future<Output = Result<T>>,
+    {
+        Cloud::check_internet_connection().await?;
+        func().await
     }
 }
 
