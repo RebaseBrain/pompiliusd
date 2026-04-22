@@ -75,21 +75,27 @@ impl Cloud {
 #[interface(name = "org.zbus.pompiliusd")]
 impl CloudApi for Cloud {
     async fn list_profiles(&self) -> String {
-        match self.rclone.list_profiles().await {
+        match self.executor(|| self.rclone.list_profiles()).await {
             Ok(res) => to_ok(StatusCode::OK, res),
             Err(err) => err.into(),
         }
     }
 
     async fn get_provider_options(&self, provider_type: &str) -> String {
-        match self.rclone.get_provider_options(provider_type).await {
+        match self
+            .executor(|| self.rclone.get_provider_options(provider_type))
+            .await
+        {
             Ok(res) => to_ok(StatusCode::OK, res),
             Err(err) => err.into(),
         }
     }
 
     async fn get_files_status(&self, profile_name: &str, paths: Vec<String>) -> String {
-        match self.rclone.get_files_status(profile_name, paths).await {
+        match self
+            .executor(|| self.rclone.get_files_status(profile_name, paths))
+            .await
+        {
             Ok(res) => to_ok(StatusCode::OK, res),
             Err(err) => err.into(),
         }
@@ -97,8 +103,7 @@ impl CloudApi for Cloud {
 
     async fn create_profile(&self, profile_name: &str, domain: &str, parameters: &str) -> String {
         match self
-            .rclone
-            .create_config(profile_name, domain, parameters)
+            .executor(|| self.rclone.create_config(profile_name, domain, parameters))
             .await
         {
             Ok(res) => to_ok(StatusCode::OK, res),
@@ -107,7 +112,10 @@ impl CloudApi for Cloud {
     }
 
     async fn delete_profile(&self, profile_name: &str) -> String {
-        match self.rclone.delete_profile(profile_name).await {
+        match self
+            .executor(|| self.rclone.delete_profile(profile_name))
+            .await
+        {
             Ok(res) => to_ok(StatusCode::OK, res),
             Err(err) => err.into(),
         }
@@ -121,8 +129,10 @@ impl CloudApi for Cloud {
         cache_max_age: &str,
     ) -> String {
         match self
-            .rclone
-            .mount(profile_name, file_path, cache_max_size, cache_max_age)
+            .executor(|| {
+                self.rclone
+                    .mount(profile_name, file_path, cache_max_size, cache_max_age)
+            })
             .await
         {
             Ok(res) => to_ok(StatusCode::OK, res),
@@ -131,42 +141,54 @@ impl CloudApi for Cloud {
     }
 
     async fn link(&self, profile_name: &str, path: &str) -> String {
-        match self.rclone.link(profile_name, path).await {
+        match self.executor(|| self.rclone.link(profile_name, path)).await {
             Ok(res) => to_ok(StatusCode::OK, res),
             Err(err) => err.into(),
         }
     }
 
     async fn cache_directory(&self, path: &str) -> String {
-        match self.rclone.cache_directory(path).await {
+        match self.executor(|| self.rclone.cache_directory(path)).await {
             Ok(res) => to_ok(StatusCode::OK, res),
             Err(err) => err.into(),
         }
     }
 
     async fn refresh(&self, profile_name: &str, path: &str) -> String {
-        match self.rclone.refresh(profile_name, path).await {
+        match self
+            .executor(|| self.rclone.refresh(profile_name, path))
+            .await
+        {
             Ok(res) => to_ok(StatusCode::OK, res),
             Err(err) => err.into(),
         }
     }
 
     async fn delete_cache_file(&self, profile_name: &str, path: &str) -> String {
-        match self.rclone.delete_cache_file(profile_name, path).await {
+        match self
+            .executor(|| self.rclone.delete_cache_file(profile_name, path))
+            .await
+        {
             Ok(res) => to_ok(StatusCode::OK, res),
             Err(err) => err.into(),
         }
     }
 
     async fn delete_cache_directory(&self, profile_name: &str, path: &str) -> String {
-        match self.rclone.delete_cache_directory(profile_name, path).await {
+        match self
+            .executor(|| self.rclone.delete_cache_directory(profile_name, path))
+            .await
+        {
             Ok(res) => to_ok(StatusCode::OK, res),
             Err(err) => err.into(),
         }
     }
 
     async fn delete_cache_path(&self, profile_name: &str, path: &str) -> String {
-        match self.rclone.delete_cache_path(profile_name, path).await {
+        match self
+            .executor(|| self.rclone.delete_cache_path(profile_name, path))
+            .await
+        {
             Ok(res) => to_ok(StatusCode::OK, res),
             Err(err) => err.into(),
         }
