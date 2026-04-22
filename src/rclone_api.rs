@@ -121,6 +121,7 @@ impl RcloneApi for Rclone {
             Ok("File is not cached".to_string())
         }
     }
+
     async fn list_profiles(&self) -> Result<Vec<(String, String)>> {
         let response = self
             .client
@@ -466,7 +467,7 @@ impl RcloneApi for Rclone {
     async fn refresh(&self, profile_name: &str, path: &str) -> Result<String> {
         let body = json!({
             "fs": format!("{}:", profile_name),
-            "file": path,
+            "dir": path,
             "_async": true,
             "recursive": true,
         });
