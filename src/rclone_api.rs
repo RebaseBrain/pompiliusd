@@ -187,6 +187,11 @@ impl RcloneApi for Rclone {
         Ok(filtered_options)
     }
 
+    /// Получение статуса файлов:
+    ///
+    /// # Arguments
+    /// - profile_name - название хранилища
+    /// - paths - TODO: уточнить какие именно пути до файлов в хранилище
     async fn get_files_status(
         &self,
         profile_name: &str,
@@ -232,6 +237,15 @@ impl RcloneApi for Rclone {
         Ok(results)
     }
 
+    /// Создает профиль хранилища
+    ///
+    /// # Arguments
+    /// - profile_name - название хранилища
+    /// - domain - название типа хранилища (yandex, drive и тп)
+    /// - parameters - дополнительные параметры авторизации
+    ///
+    /// TODO: довольно много логики в одном методе, надо либо разбить на доп методы, либо добавить
+    /// комменты к важным блокам кода
     async fn create_config(
         &self,
         profile_name: &str,
@@ -322,6 +336,10 @@ impl RcloneApi for Rclone {
         }
     }
 
+    /// Удаляет профиль хранилища по названию
+    ///
+    /// # Arguments
+    /// - profile_name - название хранилища
     async fn delete_profile(&self, profile_name: &str) -> Result<String> {
         let body = HashMap::from([("name", profile_name)]);
 
@@ -335,6 +353,13 @@ impl RcloneApi for Rclone {
         Ok(format!("Success: Profile {} deleted", profile_name))
     }
 
+    /// Создает ссылку на просмотр на файл/директорию из хранилища
+    ///
+    /// # Arguments
+    /// - profile_name - название хранилища
+    /// - path - полный путь, где нужно примонтировать хранилище
+    /// - cache_max_size - максимальный размер кэша на данный mount
+    /// - cache_max_age - максимальное время жизни кэша TODO: желательно пояснить на что оно влияет
     async fn mount(
         &self,
         profile_name: &str,
@@ -374,7 +399,7 @@ impl RcloneApi for Rclone {
                 "CacheMode": "full",
                 "CacheMaxAge": &cache_max_age,
                 "CacheMaxSize": &cache_max_size,
-                "ReadAhead": 0,
+                "DirCacheTime": "9999h",
                 "NoChecksum": false,
                 "NoModTime": false,
             }
@@ -401,6 +426,11 @@ impl RcloneApi for Rclone {
         }
     }
 
+    /// Создает ссылку на просмотр на файл/директорию из хранилища
+    ///
+    /// # Arguments
+    /// - profile_name - название хранилища
+    /// - path - путь в хранилище  TODO: уточнить относительный или полный?
     async fn link(&self, profile_name: &str, path: &str) -> Result<String> {
         let body = HashMap::from([
             ("fs", profile_name.to_string() + ":"),
@@ -435,6 +465,10 @@ impl RcloneApi for Rclone {
         }
     }
 
+    /// Рекурсинво кэширует директорию с удаленного хранилища
+    ///
+    /// # Arguments
+    /// - path - полный путь до директории в хранилище
     async fn cache_directory(&self, path: &str) -> Result<String> {
         let mut file_paths = Vec::new();
 
